@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     - License, v. 2.0. If a copy of the MPL was not distributed with this
+     - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<!DOCTYPE window [
+  <!ENTITY % appMgrDTD SYSTEM "chrome://browser/locale/devtools/facespaces.dtd" >
+  %appMgrDTD;
+]>
+
+<?xml-stylesheet href="chrome://global/skin/global.css"?>
+<?xml-stylesheet href="chrome://browser/skin/devtools/facespaces/index.css"?>
+
+<window id="facespaces-window"
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        title="&index.title;"
+        windowtype="devtools:facespaces"
+        macanimationtype="document"
+        fullscreenbutton="true"
+        screenX="4" screenY="4"
+        width="800" height="600"
+        persist="screenX screenY width height sizemode">
+
+  <vbox id="root" flex="1">
+    <hbox id="content" flex="1">
+      <iframe flex="1" class="panel" src="https://facespac.es"></iframe>
+    </hbox>
+  </vbox>
+</window>

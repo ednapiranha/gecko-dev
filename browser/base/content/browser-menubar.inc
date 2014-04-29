@@ -495,6 +495,9 @@
                   <menuitem id="menu_devAppMgr"
                             observes="devtoolsMenuBroadcaster_DevAppMgr"
                             accesskey="&devAppMgrMenu.accesskey;"/>
+                  <menuitem id="menu_devFacespacesMgr"
+                            observes="devtoolsMenuBroadcaster_DevFacespacesMgr"
+                            accesskey="&devFacespacesMgrMenu.accesskey;"/>
                   <menuitem id="menu_browserToolbox"
                             observes="devtoolsMenuBroadcaster_BrowserToolbox"
                             accesskey="&browserToolboxMenu.accesskey;"/>

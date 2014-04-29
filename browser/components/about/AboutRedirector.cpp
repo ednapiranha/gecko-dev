@@ -95,6 +95,8 @@ static RedirEntry kRedirMap[] = {
     nsIAboutModule::ALLOW_SCRIPT },
   { "app-manager", "chrome://browser/content/devtools/app-manager/index.xul",
     nsIAboutModule::ALLOW_SCRIPT },
+  { "facespaces", "chrome://browser/content/devtools/facespaces/index.xul",
+    nsIAboutModule::ALLOW_SCRIPT },
   { "customizing", "chrome://browser/content/customizableui/aboutCustomizing.xul",
     nsIAboutModule::ALLOW_SCRIPT },
 };
@@ -119,7 +121,7 @@ GetAboutModuleName(nsIURI *aURI)
 }
 
 NS_IMETHODIMP
-AboutRedirector::NewChannel(nsIURI *aURI, nsIChannel **result) 
+AboutRedirector::NewChannel(nsIURI *aURI, nsIChannel **result)
 {
   NS_ENSURE_ARG_POINTER(aURI);
   NS_ASSERTION(result, "must not be null");
