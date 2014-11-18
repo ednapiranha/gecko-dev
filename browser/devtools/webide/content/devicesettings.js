@@ -68,12 +68,12 @@ function BuildUI() {
 
   if (AppManager.connection &&
       AppManager.connection.status == Connection.Status.CONNECTED &&
-      AppManager.preferenceFront) {
-    configView.front = AppManager.preferenceFront;
-    configView.kind = "Pref";
-    configView.includeTypeName = true;
+      AppManager.settingsFront) {
+    configView.front = AppManager.settingsFront;
+    configView.kind = "Setting";
+    configView.includeTypeName = false;
 
-    AppManager.preferenceFront.getAllPrefs().then(json => {
+    AppManager.settingsFront.getAllSettings().then(json => {
       let deviceItems = Object.keys(json);
       deviceItems.sort();
       configView.keys = deviceItems;
