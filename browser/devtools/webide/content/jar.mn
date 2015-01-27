@@ -24,3 +24,4 @@ webide.jar:
     content/devicepreferences.xhtml   (devicepreferences.xhtml)
     content/devicesettings.js         (devicesettings.js)
     content/devicesettings.xhtml      (devicesettings.xhtml)
+    content/projectlisting.xhtml     (projectlisting.xhtml)

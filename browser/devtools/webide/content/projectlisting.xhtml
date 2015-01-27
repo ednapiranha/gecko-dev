@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+
+<!DOCTYPE html [
+  <!ENTITY % webideDTD SYSTEM "chrome://browser/locale/devtools/webide.dtd" >
+  %webideDTD;
+]>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf8"/>
+  </head>
+  <body>
+    <panel id="project-panel" type="arrow" position="bottomcenter topleft" consumeoutsideclicks="true" animate="false">
+      <vbox flex="1">
+        <toolbarbutton class="panel-item project-panel-item-newapp" command="cmd_newApp"/>
+        <toolbarbutton class="panel-item project-panel-item-openpackaged" command="cmd_importPackagedApp"/>
+        <toolbarbutton class="panel-item project-panel-item-openhosted" command="cmd_importHostedApp"/>
+        <label class="panel-header">&projectPanel_myProjects;</label>
+        <vbox id="project-panel-projects"></vbox>
+        <label class="panel-header" id="panel-header-runtimeapps" hidden="true">&projectPanel_runtimeApps;</label>
+        <vbox flex="1" id="project-panel-runtimeapps"/>
+        <label class="panel-header" id="panel-header-tabs" hidden="true">&projectPanel_tabs;</label>
+        <vbox flex="1" id="project-panel-tabs"/>
+      </vbox>
+    </panel>
+  </body>
+</html>

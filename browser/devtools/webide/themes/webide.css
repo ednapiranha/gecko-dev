@@ -151,6 +151,18 @@ panel > .panel-arrowcontainer > .panel-arrowcontent {
   max-width: 400px;
 }
 
+#project-listing-panel {
+  width: 215px;
+}
+
+.project-listing {
+  display: none;
+}
+
+.project-listing.on {
+  display: block;
+}
+
 .panel-item {
   padding: 3px 12px;
   margin: 0;
@@ -277,6 +289,10 @@ panel > .panel-arrowcontainer > .panel-arrowcontent {
 %ifndef XP_MACOSX
   border-top: 1px solid #AAA;
 %endif
+}
+
+.project-layout {
+  background-color: #f00 !important;
 }
 
 .devtools-horizontal-splitter {

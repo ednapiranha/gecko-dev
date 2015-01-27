@@ -107,6 +107,7 @@ let UI = {
                                .QueryInterface(Ci.nsIDocShell)
                                .contentViewer;
     this.contentViewer.fullZoom = Services.prefs.getCharPref("devtools.webide.zoom");
+    this._projectLayoutToggle = Services.prefs.getBoolPref("devtools.webide.projectLayoutToggle");
   },
 
   uninit: function() {
@@ -522,14 +523,24 @@ let UI = {
 
     let project = AppManager.selectedProject;
 
-    if (!project) {
-      buttonNode.classList.add("no-project");
-      labelNode.setAttribute("value", Strings.GetStringFromName("projectButton_label"));
-      imageNode.removeAttribute("src");
+    if (this._projectLayoutToggle) {
+      if (!project) {
+        labelNode.setAttribute("value", Strings.GetStringFromName("projectButton_label"));
+        imageNode.removeAttribute("src");
+      } else {
+        labelNode.setAttribute("value", project.name);
+        imageNode.setAttribute("src", project.icon);
+      }
     } else {
-      buttonNode.classList.remove("no-project");
-      labelNode.setAttribute("value", project.name);
-      imageNode.setAttribute("src", project.icon);
+      if (!project) {
+        buttonNode.classList.add("no-project");
+        labelNode.setAttribute("value", Strings.GetStringFromName("projectButton_label"));
+        imageNode.removeAttribute("src");
+      } else {
+        buttonNode.classList.remove("no-project");
+        labelNode.setAttribute("value", project.name);
+        imageNode.setAttribute("src", project.icon);
+      }
     }
   },
 
@@ -1051,11 +1062,21 @@ let Cmds = {
 
   showProjectPanel: function() {
     let deferred = promise.defer();
+    let doc = document;
 
-    let panelNode = document.querySelector("#project-panel");
-    let panelVboxNode = document.querySelector("#project-panel > vbox");
-    let anchorNode = document.querySelector("#project-panel-button > .panel-button-anchor");
-    let projectsNode = document.querySelector("#project-panel-projects");
+    if (UI._projectLayoutToggle) {
+      doc = document.querySelector("#project-listing-panel-details").contentWindow.document;
+      let projectElements = document.querySelectorAll(".project-listing");
+
+      for (var i = 0; i < projectElements.length; i++) {
+        projectElements[i].classList.add("on");
+      }
+    }
+
+    let panelNode = doc.querySelector("#project-panel");
+    let panelVboxNode = doc.querySelector("#project-panel > vbox");
+    let anchorNode = doc.querySelector("#project-panel-button > .panel-button-anchor");
+    let projectsNode = doc.querySelector("#project-panel-projects");
 
     while (projectsNode.hasChildNodes()) {
       projectsNode.firstChild.remove();
@@ -1065,7 +1086,7 @@ let Cmds = {
       let projects = AppProjects.store.object.projects;
       for (let i = 0; i < projects.length; i++) {
         let project = projects[i];
-        let panelItemNode = document.createElement("toolbarbutton");
+        let panelItemNode = doc.createElement("toolbarbutton");
         panelItemNode.className = "panel-item";
         projectsNode.appendChild(panelItemNode);
         panelItemNode.setAttribute("label", project.name || AppManager.DEFAULT_PROJECT_NAME);
@@ -1080,7 +1101,9 @@ let Cmds = {
           });
         }
         panelItemNode.addEventListener("click", () => {
-          UI.hidePanels();
+          if (!UI._projectLayoutToggle) {
+            UI.hidePanels();
+          }
           AppManager.selectedProject = project;
         }, true);
       }
@@ -1090,17 +1113,21 @@ let Cmds = {
         // Not doing it in the next tick can cause mis-calculations
         // of the size of the panel.
         function onPopupShown() {
-          panelNode.removeEventListener("popupshown", onPopupShown);
+          if (!self._projectLayoutToggle) {
+            panelNode.removeEventListener("popupshown", onPopupShown);
+          }
           deferred.resolve();
         }
-        panelNode.addEventListener("popupshown", onPopupShown);
-        panelNode.openPopup(anchorNode);
+        if (!self._projectLayoutToggle) {
+          panelNode.addEventListener("popupshown", onPopupShown);
+          panelNode.openPopup(anchorNode);
+        }
         panelVboxNode.scrollTop = 0;
       }, 0);
     }, deferred.reject);
 
 
-    let runtimeappsHeaderNode = document.querySelector("#panel-header-runtimeapps");
+    let runtimeappsHeaderNode = doc.querySelector("#panel-header-runtimeapps");
     let sortedApps = [];
     for (let [manifestURL, app] of AppManager.apps) {
       sortedApps.push(app);
@@ -1115,13 +1142,13 @@ let Cmds = {
       runtimeappsHeaderNode.setAttribute("hidden", "true");
     }
 
-    let runtimeAppsNode = document.querySelector("#project-panel-runtimeapps");
+    let runtimeAppsNode = doc.querySelector("#project-panel-runtimeapps");
     while (runtimeAppsNode.hasChildNodes()) {
       runtimeAppsNode.firstChild.remove();
     }
 
     if (mainProcess) {
-      let panelItemNode = document.createElement("toolbarbutton");
+      let panelItemNode = doc.createElement("toolbarbutton");
       panelItemNode.className = "panel-item";
       panelItemNode.setAttribute("label", Strings.GetStringFromName("mainProcess_label"));
       panelItemNode.setAttribute("image", AppManager.DEFAULT_PROJECT_ICON);
@@ -1138,7 +1165,7 @@ let Cmds = {
 
     for (let i = 0; i < sortedApps.length; i++) {
       let app = sortedApps[i];
-      let panelItemNode = document.createElement("toolbarbutton");
+      let panelItemNode = doc.createElement("toolbarbutton");
       panelItemNode.className = "panel-item";
       panelItemNode.setAttribute("label", app.manifest.name);
       panelItemNode.setAttribute("image", app.iconURL);

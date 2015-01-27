@@ -191,17 +191,23 @@
   </popupset>
 
   <notificationbox flex="1" id="notificationbox">
-    <deck flex="1" id="deck" selectedIndex="-1">
-      <iframe id="deck-panel-details" flex="1" src="details.xhtml"/>
-      <iframe id="deck-panel-projecteditor" flex="1"/>
-      <iframe id="deck-panel-addons" flex="1" src="addons.xhtml"/>
-      <iframe id="deck-panel-prefs" flex="1" src="prefs.xhtml"/>
-      <iframe id="deck-panel-permissionstable" flex="1" src="permissionstable.xhtml"/>
-      <iframe id="deck-panel-runtimedetails" flex="1" src="runtimedetails.xhtml"/>
-      <iframe id="deck-panel-monitor" flex="1" lazysrc="monitor.xhtml"/>
-      <iframe id="deck-panel-devicepreferences" flex="1" src="devicepreferences.xhtml"/>
-      <iframe id="deck-panel-devicesettings" flex="1" src="devicesettings.xhtml"/>
-    </deck>
+    <hbox flex="1">
+      <vbox id="project-listing-panel" class="project-listing">
+        <iframe id="project-listing-panel-details" flex="1" src="projectlisting.xhtml"/>
+      </vbox>
+      <splitter class="devtools-side-splitter project-listing" orient="vertical"/>
+      <deck flex="1" id="deck" selectedIndex="-1">
+        <iframe id="deck-panel-details" flex="1" src="details.xhtml"/>
+        <iframe id="deck-panel-projecteditor" flex="1"/>
+        <iframe id="deck-panel-addons" flex="1" src="addons.xhtml"/>
+        <iframe id="deck-panel-prefs" flex="1" src="prefs.xhtml"/>
+        <iframe id="deck-panel-permissionstable" flex="1" src="permissionstable.xhtml"/>
+        <iframe id="deck-panel-runtimedetails" flex="1" src="runtimedetails.xhtml"/>
+        <iframe id="deck-panel-monitor" flex="1" lazysrc="monitor.xhtml"/>
+        <iframe id="deck-panel-devicepreferences" flex="1" src="devicepreferences.xhtml"/>
+        <iframe id="deck-panel-devicesettings" flex="1" src="devicesettings.xhtml"/>
+      </deck>
+    </hbox>
     <splitter hidden="true" class="devtools-horizontal-splitter" orient="vertical"/>
     <!-- toolbox iframe will be inserted here -->
   </notificationbox>
