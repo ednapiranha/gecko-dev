@@ -17,19 +17,18 @@ const {Connection} = require("devtools/client/connection-manager");
 const {AppManager} = require("devtools/webide/app-manager");
 const {Promise: promise} = Cu.import("resource://gre/modules/Promise.jsm", {});
 const ProjectEditor = require("projecteditor/projecteditor");
-const {Devices} = Cu.import("resource://gre/modules/devtools/Devices.jsm");
 const {GetAvailableAddons} = require("devtools/webide/addons");
 const {GetTemplatesJSON, GetAddonsJSON} = require("devtools/webide/remote-resources");
 const utils = require("devtools/webide/utils");
 const Telemetry = require("devtools/shared/telemetry");
-const {RuntimeScanners, WiFiScanner} = require("devtools/webide/runtimes");
+const {RuntimeScanners} = require("devtools/webide/runtimes");
 const {showDoorhanger} = require("devtools/shared/doorhanger");
 const ProjectList = require("devtools/webide/project-list");
+const RuntimeList = require("devtools/webide/runtime-list");
 
 const Strings = Services.strings.createBundle("chrome://browser/locale/devtools/webide.properties");
 
 const HTML = "http://www.w3.org/1999/xhtml";
-const HELP_URL = "https://developer.mozilla.org/docs/Tools/WebIDE/Troubleshooting";
 
 const MAX_ZOOM = 1.4;
 const MIN_ZOOM = 0.6;
@@ -53,6 +52,7 @@ window.addEventListener("unload", function onUnload() {
 });
 
 let projectList;
+let runtimeList;
 
 let UI = {
   init: function() {
@@ -70,8 +70,11 @@ let UI = {
     projectList = new ProjectList(window, window);
     ProjectPanel.toggle(projectList.sidebarsEnabled);
 
-    this.updateCommands();
-    this.updateRuntimeList();
+    runtimeList = new RuntimeList(window, window);
+    RuntimePanel.toggle(runtimeList.sidebarsEnabled);
+
+    projectList.updateCommands();
+    runtimeList.updateCommands();
 
     this.onfocus = this.onfocus.bind(this);
     window.addEventListener("focus", this.onfocus, true);
@@ -79,6 +82,7 @@ let UI = {
     AppProjects.load().then(() => {
       this.autoSelectProject();
       projectList.update();
+      runtimeList.update();
     }, e => {
       console.error(e);
       this.reportError("error_appProjectsLoadFailed");
@@ -121,6 +125,7 @@ let UI = {
     AppManager.off("app-manager-update", this.appManagerUpdate);
     AppManager.uninit();
     projectList = null;
+    runtimeList = null;
     window.removeEventListener("message", this.onMessage);
     this.updateConnectionTelemetry();
     this._telemetry.toolClosed("webide");
@@ -155,12 +160,13 @@ let UI = {
     // Got a message from app-manager.js
     switch (what) {
       case "runtimelist":
-        this.updateRuntimeList();
-        this.autoConnectRuntime();
+        runtimeList.update();
+        runtimeList.autoConnectRuntime();
         break;
       case "connection":
-        this.updateRuntimeButton();
-        this.updateCommands();
+        runtimeList.updateRuntimeButton();
+        runtimeList.updateCommands();
+        projectList.updateCommands();
         this.updateConnectionTelemetry();
         break;
       case "before-project":
@@ -172,7 +178,8 @@ let UI = {
         this._updatePromise = Task.spawn(function() {
           UI.updateTitle();
           yield UI.destroyToolbox();
-          UI.updateCommands();
+          runtimeList.updateCommands();
+          projectList.updateCommands();
           UI.updateProjectButton();
           UI.openProject();
           UI.autoStartProject();
@@ -183,18 +190,20 @@ let UI = {
       case "project-is-not-running":
       case "project-is-running":
       case "list-tabs-response":
-        this.updateCommands();
+        runtimeList.updateCommands();
+        projectList.updateCommands();
         break;
       case "runtime-details":
-        this.updateRuntimeButton();
+        runtimeList.updateRuntimeButton();
         break;
       case "runtime-changed":
-        this.updateRuntimeButton();
-        this.saveLastConnectedRuntime();
+        runtimeList.updateRuntimeButton();
+        runtimeList.saveLastConnectedRuntime();
         break;
       case "project-validated":
         this.updateTitle();
-        this.updateCommands();
+        runtimeList.updateCommands();
+        projectList.updateCommands();
         this.updateProjectButton();
         this.updateProjectEditorHeader();
         projectList.update();
@@ -263,7 +272,7 @@ let UI = {
     let win = document.querySelector("window");
     win.classList.add("busy")
     win.classList.add("busy-undetermined");
-    this.updateCommands();
+    runtimeList.updateCommands();
   },
 
   unbusy: function() {
@@ -271,7 +280,7 @@ let UI = {
     win.classList.remove("busy")
     win.classList.remove("busy-determined");
     win.classList.remove("busy-undetermined");
-    this.updateCommands();
+    runtimeList.updateCommands();
     this._busyPromise = null;
   },
 
@@ -345,7 +354,7 @@ let UI = {
       label: Strings.GetStringFromName("notification_showTroubleShooting_label"),
       accessKey: Strings.GetStringFromName("notification_showTroubleShooting_accesskey"),
       callback: function () {
-        Cmds.showTroubleShooting();
+        runtimeList.showTroubleShooting();
       }
     }];
 
@@ -358,134 +367,6 @@ let UI = {
   dismissErrorNotification: function() {
     let nbox = document.querySelector("#notificationbox");
     nbox.removeAllNotifications(true);
-  },
-
-  /********** RUNTIME **********/
-
-  updateRuntimeList: function() {
-    let wifiHeaderNode = document.querySelector("#runtime-header-wifi");
-    if (WiFiScanner.allowed) {
-      wifiHeaderNode.removeAttribute("hidden");
-    } else {
-      wifiHeaderNode.setAttribute("hidden", "true");
-    }
-
-    let usbListNode = document.querySelector("#runtime-panel-usb");
-    let wifiListNode = document.querySelector("#runtime-panel-wifi");
-    let simulatorListNode = document.querySelector("#runtime-panel-simulator");
-    let otherListNode = document.querySelector("#runtime-panel-other");
-
-    let noHelperNode = document.querySelector("#runtime-panel-noadbhelper");
-    let noUSBNode = document.querySelector("#runtime-panel-nousbdevice");
-
-    if (Devices.helperAddonInstalled) {
-      noHelperNode.setAttribute("hidden", "true");
-    } else {
-      noHelperNode.removeAttribute("hidden");
-    }
-
-    let runtimeList = AppManager.runtimeList;
-
-    if (runtimeList.usb.length === 0 && Devices.helperAddonInstalled) {
-      noUSBNode.removeAttribute("hidden");
-    } else {
-      noUSBNode.setAttribute("hidden", "true");
-    }
-
-    for (let [type, parent] of [
-      ["usb", usbListNode],
-      ["wifi", wifiListNode],
-      ["simulator", simulatorListNode],
-      ["other", otherListNode],
-    ]) {
-      while (parent.hasChildNodes()) {
-        parent.firstChild.remove();
-      }
-      for (let runtime of runtimeList[type]) {
-        let panelItemNode = document.createElement("toolbarbutton");
-        panelItemNode.className = "panel-item runtime-panel-item-" + type;
-        panelItemNode.setAttribute("label", runtime.name);
-        parent.appendChild(panelItemNode);
-        let r = runtime;
-        panelItemNode.addEventListener("click", () => {
-          this.hidePanels();
-          this.dismissErrorNotification();
-          this.connectToRuntime(r);
-        }, true);
-      }
-    }
-  },
-
-  get lastConnectedRuntime() {
-    return Services.prefs.getCharPref("devtools.webide.lastConnectedRuntime");
-  },
-
-  set lastConnectedRuntime(runtime) {
-    Services.prefs.setCharPref("devtools.webide.lastConnectedRuntime", runtime);
-  },
-
-  autoConnectRuntime: function () {
-    // Automatically reconnect to the previously selected runtime,
-    // if available and has an ID and feature is enabled
-    if (AppManager.selectedRuntime ||
-        !Services.prefs.getBoolPref("devtools.webide.autoConnectRuntime") ||
-        !this.lastConnectedRuntime) {
-      return;
-    }
-    let [_, type, id] = this.lastConnectedRuntime.match(/^(\w+):(.+)$/);
-
-    type = type.toLowerCase();
-
-    // Local connection is mapped to AppManager.runtimeList.other array
-    if (type == "local") {
-      type = "other";
-    }
-
-    // We support most runtimes except simulator, that needs to be manually
-    // launched
-    if (type == "usb" || type == "wifi" || type == "other") {
-      for (let runtime of AppManager.runtimeList[type]) {
-        // Some runtimes do not expose an id and don't support autoconnect (like
-        // remote connection)
-        if (runtime.id == id) {
-          // Only want one auto-connect attempt, so clear last runtime value
-          this.lastConnectedRuntime = "";
-          this.connectToRuntime(runtime);
-        }
-      }
-    }
-  },
-
-  connectToRuntime: function(runtime) {
-    let name = runtime.name;
-    let promise = AppManager.connectToRuntime(runtime);
-    promise.then(() => this.initConnectionTelemetry())
-           .catch(() => {
-             // Empty rejection handler to silence uncaught rejection warnings
-             // |busyUntil| will listen for rejections.
-             // Bug 1121100 may find a better way to silence these.
-           });
-    return this.busyUntil(promise, "Connecting to " + name);
-  },
-
-  updateRuntimeButton: function() {
-    let labelNode = document.querySelector("#runtime-panel-button > .panel-button-label");
-    if (!AppManager.selectedRuntime) {
-      labelNode.setAttribute("value", Strings.GetStringFromName("runtimeButton_label"));
-    } else {
-      let name = AppManager.selectedRuntime.name;
-      labelNode.setAttribute("value", name);
-    }
-  },
-
-  saveLastConnectedRuntime: function () {
-    if (AppManager.selectedRuntime &&
-        AppManager.selectedRuntime.id !== undefined) {
-      this.lastConnectedRuntime = AppManager.selectedRuntime.type + ":" +
-                                  AppManager.selectedRuntime.id;
-    } else {
-      this.lastConnectedRuntime = "";
-    }
   },
 
   _actionsToLog: new Set(),
@@ -810,121 +691,6 @@ let UI = {
     this.updateProjectEditorMenusVisibility();
   },
 
-  /********** COMMANDS **********/
-
-  updateCommands: function() {
-
-    if (document.querySelector("window").classList.contains("busy")) {
-      document.querySelector("#cmd_newApp").setAttribute("disabled", "true");
-      document.querySelector("#cmd_importPackagedApp").setAttribute("disabled", "true");
-      document.querySelector("#cmd_importHostedApp").setAttribute("disabled", "true");
-      document.querySelector("#cmd_showProjectPanel").setAttribute("disabled", "true");
-      document.querySelector("#cmd_showRuntimePanel").setAttribute("disabled", "true");
-      document.querySelector("#cmd_removeProject").setAttribute("disabled", "true");
-      document.querySelector("#cmd_disconnectRuntime").setAttribute("disabled", "true");
-      document.querySelector("#cmd_showPermissionsTable").setAttribute("disabled", "true");
-      document.querySelector("#cmd_takeScreenshot").setAttribute("disabled", "true");
-      document.querySelector("#cmd_showRuntimeDetails").setAttribute("disabled", "true");
-      document.querySelector("#cmd_play").setAttribute("disabled", "true");
-      document.querySelector("#cmd_stop").setAttribute("disabled", "true");
-      document.querySelector("#cmd_toggleToolbox").setAttribute("disabled", "true");
-      document.querySelector("#cmd_showDevicePrefs").setAttribute("disabled", "true");
-      document.querySelector("#cmd_showSettings").setAttribute("disabled", "true");
-      return;
-    }
-
-    document.querySelector("#cmd_newApp").removeAttribute("disabled");
-    document.querySelector("#cmd_importPackagedApp").removeAttribute("disabled");
-    document.querySelector("#cmd_importHostedApp").removeAttribute("disabled");
-    document.querySelector("#cmd_showProjectPanel").removeAttribute("disabled");
-    document.querySelector("#cmd_showRuntimePanel").removeAttribute("disabled");
-
-    // Action commands
-    let playCmd = document.querySelector("#cmd_play");
-    let stopCmd = document.querySelector("#cmd_stop");
-    let debugCmd = document.querySelector("#cmd_toggleToolbox");
-    let playButton = document.querySelector('#action-button-play');
-
-    if (!AppManager.selectedProject || !AppManager.connected) {
-      playCmd.setAttribute("disabled", "true");
-      stopCmd.setAttribute("disabled", "true");
-      debugCmd.setAttribute("disabled", "true");
-    } else {
-      let isProjectRunning = AppManager.isProjectRunning();
-      if (isProjectRunning) {
-        playButton.classList.add("reload");
-        stopCmd.removeAttribute("disabled");
-        debugCmd.removeAttribute("disabled");
-      } else {
-        playButton.classList.remove("reload");
-        stopCmd.setAttribute("disabled", "true");
-        debugCmd.setAttribute("disabled", "true");
-      }
-
-      // If connected and a project is selected
-      if (AppManager.selectedProject.type == "runtimeApp") {
-        playCmd.removeAttribute("disabled");
-      } else if (AppManager.selectedProject.type == "tab") {
-        playCmd.removeAttribute("disabled");
-        stopCmd.setAttribute("disabled", "true");
-      } else if (AppManager.selectedProject.type == "mainProcess") {
-        playCmd.setAttribute("disabled", "true");
-        stopCmd.setAttribute("disabled", "true");
-      } else {
-        if (AppManager.selectedProject.errorsCount == 0 &&
-            AppManager.runtimeCanHandleApps()) {
-          playCmd.removeAttribute("disabled");
-        } else {
-          playCmd.setAttribute("disabled", "true");
-        }
-      }
-    }
-
-    // Remove command
-    let removeCmdNode = document.querySelector("#cmd_removeProject");
-    if (AppManager.selectedProject) {
-      removeCmdNode.removeAttribute("disabled");
-    } else {
-      removeCmdNode.setAttribute("disabled", "true");
-    }
-
-    // Runtime commands
-    let screenshotCmd = document.querySelector("#cmd_takeScreenshot");
-    let permissionsCmd = document.querySelector("#cmd_showPermissionsTable");
-    let detailsCmd = document.querySelector("#cmd_showRuntimeDetails");
-    let disconnectCmd = document.querySelector("#cmd_disconnectRuntime");
-    let devicePrefsCmd = document.querySelector("#cmd_showDevicePrefs");
-    let settingsCmd = document.querySelector("#cmd_showSettings");
-
-    let box = document.querySelector("#runtime-actions");
-
-    let runtimePanelButton = document.querySelector("#runtime-panel-button");
-    if (AppManager.connected) {
-      if (AppManager.deviceFront) {
-        detailsCmd.removeAttribute("disabled");
-        permissionsCmd.removeAttribute("disabled");
-        screenshotCmd.removeAttribute("disabled");
-      }
-      if (AppManager.preferenceFront) {
-        devicePrefsCmd.removeAttribute("disabled");
-      }
-      if (AppManager.settingsFront) {
-        settingsCmd.removeAttribute("disabled");
-      }
-      disconnectCmd.removeAttribute("disabled");
-      runtimePanelButton.setAttribute("active", "true");
-    } else {
-      detailsCmd.setAttribute("disabled", "true");
-      permissionsCmd.setAttribute("disabled", "true");
-      screenshotCmd.setAttribute("disabled", "true");
-      disconnectCmd.setAttribute("disabled", "true");
-      devicePrefsCmd.setAttribute("disabled", "true");
-      settingsCmd.setAttribute("disabled", "true");
-      runtimePanelButton.removeAttribute("active");
-    }
-
-  },
-
   /********** TOOLBOX **********/
 
   onMessage: function(event) {
@@ -1064,37 +830,15 @@ let Cmds = {
   },
 
   showRuntimePanel: function() {
-    RuntimeScanners.scan();
-
-    let panel = document.querySelector("#runtime-panel");
-    let anchor = document.querySelector("#runtime-panel-button > .panel-button-anchor");
-
-    let deferred = promise.defer();
-    function onPopupShown() {
-      panel.removeEventListener("popupshown", onPopupShown);
-      deferred.resolve();
-    }
-    panel.addEventListener("popupshown", onPopupShown);
-
-    panel.openPopup(anchor);
-    return deferred.promise;
+    RuntimePanel.toggle(runtimeList.sidebarsEnabled, true);
   },
 
   disconnectRuntime: function() {
-    let disconnecting = Task.spawn(function*() {
-      yield UI.destroyToolbox();
-      yield AppManager.disconnectRuntime();
-    });
-    return UI.busyUntil(disconnecting, "disconnecting from runtime");
+    runtimeList.disconnectRuntime();
   },
 
   takeScreenshot: function() {
-    return UI.busyUntil(AppManager.deviceFront.screenshotToDataURL().then(longstr => {
-       return longstr.string().then(dataURL => {
-         longstr.release().then(null, console.error);
-         UI.openInBrowser(dataURL);
-       });
-    }), "taking screenshot");
+    runtimeList.takeScreenshot();
   },
 
   showPermissionsTable: function() {
@@ -1170,11 +914,11 @@ let Cmds = {
   },
 
   showTroubleShooting: function() {
-    UI.openInBrowser(HELP_URL);
+    runtimeList.showTroubleShooting();
   },
 
   showAddons: function() {
-    UI.selectDeckPanel("addons");
+    runtimeList.showAddons();
   },
 
   showPrefs: function() {

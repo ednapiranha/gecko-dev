@@ -23,7 +23,6 @@ module.exports = ProjectList = function(window, parentWindow) {
   this._parentWindow = parentWindow;
   this._panelNodeEl = "toolbarbutton";
   this._sidebarsEnabled = Services.prefs.getBoolPref("devtools.webide.sidebars");
-
   if (this._sidebarsEnabled) {
     this._panelNodeEl = "div";
   }
@@ -165,6 +164,24 @@ ProjectList.prototype = {
         };
       }, true);
     }
+  },
+
+  updateCommands: function() {
+    let doc = this._doc;
+    let parentDoc = this._parentWindow.document;
+
+    if (parentDoc.querySelector("window").classList.contains("busy")) {
+      doc.querySelector("#cmd_newApp").setAttribute("disabled", "true");
+      doc.querySelector("#cmd_importPackagedApp").setAttribute("disabled", "true");
+      doc.querySelector("#cmd_importHostedApp").setAttribute("disabled", "true");
+      doc.querySelector("#cmd_showProjectPanel").setAttribute("disabled", "true");
+      return;
+    }
+
+    doc.querySelector("#cmd_newApp").removeAttribute("disabled");
+    doc.querySelector("#cmd_importPackagedApp").removeAttribute("disabled");
+    doc.querySelector("#cmd_importHostedApp").removeAttribute("disabled");
+    doc.querySelector("#cmd_showProjectPanel").removeAttribute("disabled");
   },
 
   update: function() {

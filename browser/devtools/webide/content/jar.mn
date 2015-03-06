@@ -31,3 +31,6 @@ webide.jar:
     content/project-listing.xhtml     (project-listing.xhtml)
     content/project-listing.js        (project-listing.js)
     content/project-panel.js          (project-panel.js)
+    content/runtime-panel.js          (runtime-panel.js)
+    content/runtime-listing.xhtml     (runtime-listing.xhtml)
+    content/runtime-listing.js        (runtime-listing.js)
